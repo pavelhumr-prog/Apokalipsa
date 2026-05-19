@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#080c08">
+<title>Jablůnka — Přežití</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@300;400;600;700&display=swap');
+:root {
+  --bg:#080c08; --bg2:#0d120d; --bg3:#111811; --border:#1f2e1f;
+  --green:#3a7a3a; --lime:#7abf3a; --red:#c0392b; --orange:#d4670a;
+  --text:#a8c4a0; --dim:#4a604a; --bright:#d0eac8; --amber:#d4a017;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100dvh;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);pointer-events:none;z-index:999}
+#app{max-width:600px;margin:0 auto;padding:12px 12px 110px;display:flex;flex-direction:column;gap:10px}
+
+.header{border:1px solid var(--border);border-left:4px solid var(--lime);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--bg2)}
+.header-title{font-family:'Oswald',sans-serif;font-size:1.5rem;font-weight:700;color:var(--lime);letter-spacing:0.06em;text-shadow:0 0 16px rgba(122,191,58,0.35)}
+.header-sub{font-size:0.58rem;color:var(--dim);letter-spacing:0.2em;text-transform:uppercase;margin-top:2px}
+.header-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.header-day{font-family:'Oswald',sans-serif;font-size:1.6rem;font-weight:300;color:var(--amber);line-height:1}
+.header-day small{font-size:0.55rem;color:var(--dim);letter-spacing:0.2em;text-transform:uppercase;display:block}
+.save-ind{font-size:0.58rem;color:var(--dim);letter-spacing:0.1em}
+.save-ind.saved{color:var(--lime)}
+
+.phase-bar{display:flex;gap:6px;align-items:center;padding:8px 14px;background:var(--bg2);border:1px solid var(--border)}
+.phase-label{font-size:0.6rem;color:var(--dim);letter-spacing:0.15em;text-transform:uppercase;margin-right:4px;white-space:nowrap}
+.phase-dot{height:4px;border-radius:2px;background:var(--border);transition:background 0.4s;flex:1}
+.phase-dot.active{background:var(--lime)}
+.phase-dot.done{background:var(--green)}
+.phase-name{font-size:0.65rem;color:var(--amber);letter-spacing:0.1em;margin-left:4px;font-family:'Oswald',sans-serif;white-space:nowrap}
+
+.status-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.status-scroll::-webkit-scrollbar{display:none}
+.status-grid{display:flex;gap:8px;min-width:max-content}
+.stat-card{background:var(--bg2);border:1px solid var(--border);padding:8px 12px;min-width:95px;position:relative;flex-shrink:0}
+.stat-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--green);transition:background 0.5s}
+.stat-card.ok::before{background:var(--lime)}
+.stat-card.warn::before{background:var(--orange)}
+.stat-card.danger::before{background:var(--red)}
+.stat-label{font-size:0.56rem;color:var(--dim);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:3px}
+.stat-value{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--bright)}
+.stat-bar{margin-top:5px;height:2px;background:var(--border);border-radius:1px;overflow:hidden}
+.stat-bar-fill{height:100%;border-radius:1px;transition:width 0.6s,background 0.6s}
+
+.story-box{background:var(--bg2);border:1px solid var(--border);padding:16px;position:relative}
+.story-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--lime),transparent)}
+.event-tag{font-size:0.58rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--lime);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.event-tag::after{content:'';flex:1;height:1px;background:var(--border)}
+.story-text{line-height:1.8;font-size:0.88rem;color:var(--text);white-space:pre-wrap}
+
+.loading{display:none;align-items:center;gap:8px;color:var(--dim);font-size:0.75rem;padding:8px 0}
+.loading.show{display:flex}
+.ld{animation:ldp 1.2s infinite;opacity:0}
+.ld:nth-child(2){animation-delay:0.2s}
+.ld:nth-child(3){animation-delay:0.4s}
+@keyframes ldp{0%,80%,100%{opacity:0}40%{opacity:1}}
+
+.eod-box{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--amber);padding:14px 16px;display:none}
+.eod-box.show{display:block}
+.eod-title{font-family:'Oswald',sans-serif;font-size:0.8rem;color:var(--amber);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px}
+.eod-text{font-size:0.82rem;color:var(--dim);line-height:1.7;white-space:pre-wrap}
+.eod-btn{margin-top:12px;width:100%;background:var(--green);border:none;color:var(--bright);padding:12px;font-family:'Oswald',sans-serif;font-size:0.9rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer}
+.eod-btn:active{background:var(--lime);color:var(--bg)}
+
+.choices{display:none;flex-direction:column;gap:7px}
+.choices.show{display:flex}
+.choice-btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:13px 14px;text-align:left;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:0.84rem;line-height:1.5;width:100%;min-height:48px}
+.choice-btn:active{background:rgba(122,191,58,0.1);border-color:var(--lime)}
+.choice-key{color:var(--lime);font-family:'Oswald',sans-serif;font-weight:600;font-size:0.95rem;margin-right:10px}
+.choice-btn:disabled{opacity:0.3}
+
+.input-row{display:none;position:fixed;bottom:0;left:0;right:0;padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--border);gap:8px;z-index:100}
+.input-row.show{display:flex}
+.custom-input{flex:1;background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:12px 14px;font-family:'Share Tech Mono',monospace;font-size:16px;outline:none;-webkit-appearance:none}
+.custom-input:focus{border-color:var(--lime)}
+.custom-input::placeholder{color:var(--dim)}
+.send-btn{background:var(--green);border:none;color:var(--bright);padding:12px 18px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:0.9rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;min-width:70px}
+.send-btn:active{background:var(--lime);color:var(--bg)}
+.send-btn:disabled{background:var(--border);color:var(--dim)}
+
+.setup-box{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--amber);padding:20px 16px}
+.setup-box h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--amber);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px}
+.setup-box p{color:var(--dim);font-size:0.78rem;line-height:1.7;margin-bottom:12px}
+.setup-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:12px 14px;font-family:'Share Tech Mono',monospace;font-size:16px;outline:none;margin-bottom:8px}
+.setup-input:focus{border-color:var(--amber)}
+.setup-btn{width:100%;background:var(--amber);border:none;color:var(--bg);padding:14px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase}
+.setup-note{margin-top:10px;font-size:0.65rem;color:var(--dim);line-height:1.6}
+
+.gameover-box{display:none;background:var(--bg2);border:2px solid var(--red);padding:24px 16px;text-align:center}
+.gameover-box.show{display:block}
+.gameover-box h2{font-family:'Oswald',sans-serif;font-size:1.8rem;color:var(--red);letter-spacing:0.15em;margin-bottom:12px;text-transform:uppercase}
+.gameover-box p{color:var(--text);font-size:0.84rem;margin-bottom:20px;line-height:1.8}
+.restart-btn{width:100%;background:var(--red);border:none;color:#fff;padding:14px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+
+.diary-toggle{background:none;border:none;color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:0.65rem;cursor:pointer;letter-spacing:0.15em;text-transform:uppercase;display:none;padding:6px 0;width:100%;text-align:left}
+.diary-toggle.show{display:block}
+.diary-box{display:none;flex-direction:column;gap:8px}
+.diary-box.show{display:flex}
+.diary-empty{color:var(--dim);font-size:0.75rem;padding:8px 0}
+
+.diary-day{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--dim);overflow:hidden}
+.diary-day.expanded{border-left-color:var(--lime)}
+.diary-day-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px}
+.diary-day-title{font-family:'Oswald',sans-serif;font-size:0.85rem;color:var(--bright);letter-spacing:0.05em}
+.diary-day-meta{font-size:0.6rem;color:var(--dim);letter-spacing:0.08em;margin-top:2px}
+.diary-day-arrow{font-size:0.7rem;color:var(--dim);transition:transform 0.2s;flex-shrink:0}
+.diary-day.expanded .diary-day-arrow{transform:rotate(180deg);color:var(--lime)}
+.diary-day-content{display:none;padding:0 14px 14px}
+.diary-day.expanded .diary-day-content{display:block}
+.diary-phase{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.diary-phase:first-child{margin-top:0;padding-top:0;border-top:none}
+.diary-phase-label{font-size:0.58rem;color:var(--amber);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:6px}
+.diary-phase-story{font-size:0.8rem;color:var(--dim);line-height:1.7;white-space:pre-wrap}
+.diary-decision{margin-top:6px;padding:6px 10px;background:var(--bg3);border-left:2px solid var(--lime);font-size:0.78rem;color:var(--text)}
+.diary-decision::before{content:'→ ';color:var(--lime)}
+
+.footer{text-align:center;color:var(--dim);font-size:0.58rem;letter-spacing:0.15em;text-transform:uppercase;padding:6px 0;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <div>
+      <div class="header-title">☢ JABLŮNKA</div>
+      <div class="header-sub">Postapo přežití · Rok 0</div>
+    </div>
+    <div class="header-right">
+      <div class="header-day"><small>Den</small><span id="dayNum">—</span></div>
+      <div class="save-ind" id="saveInd">● bez uložení</div>
+    </div>
+  </div>
+
+  <div class="phase-bar" id="phaseBar" style="display:none">
+    <span class="phase-label">Fáze</span>
+    <div class="phase-dot" id="pd0"></div>
+    <div class="phase-dot" id="pd1"></div>
+    <div class="phase-dot" id="pd2"></div>
+    <span class="phase-name" id="phaseName">Ráno</span>
+  </div>
+
+  <div class="status-scroll">
+    <div class="status-grid">
+      <div class="stat-card ok" id="cZ"><div class="stat-label">Zdraví</div><div class="stat-value" id="vZ">100%</div><div class="stat-bar"><div class="stat-bar-fill" id="bZ" style="width:100%;background:var(--lime)"></div></div></div>
+      <div class="stat-card ok" id="cJ"><div class="stat-label">Jídlo</div><div class="stat-value" id="vJ">30 dní</div><div class="stat-bar"><div class="stat-bar-fill" id="bJ" style="width:100%;background:var(--lime)"></div></div></div>
+      <div class="stat-card ok" id="cN"><div class="stat-label">Nafta</div><div class="stat-value" id="vN">35L</div><div class="stat-bar"><div class="stat-bar-fill" id="bN" style="width:100%;background:var(--lime)"></div></div></div>
+      <div class="stat-card ok" id="cB"><div class="stat-label">Benzín</div><div class="stat-value" id="vB">8L</div><div class="stat-bar"><div class="stat-bar-fill" id="bB" style="width:100%;background:var(--amber)"></div></div></div>
+      <div class="stat-card ok" id="cP"><div class="stat-label">Patrik</div><div class="stat-value" id="vP">Zdravý</div></div>
+      <div class="stat-card ok" id="cM"><div class="stat-label">Morálka</div><div class="stat-value" id="vM">Stabilní</div></div>
+    </div>
+  </div>
+
+  <div class="setup-box" id="setupBox">
+    <h3>⚙ Nastavení</h3>
+    <p>Zadej API klíč — uloží se do telefonu. Hra i deník se automaticky ukládají.</p>
+    <input type="password" class="setup-input" id="apiKeyInput" placeholder="sk-ant-api03-...">
+    <button class="setup-btn" onclick="startGame()">☢ Spustit přežití</button>
+    <div class="setup-note">console.anthropic.com → API Keys · Nový účet = $5 kredit zdarma</div>
+  </div>
+
+  <div class="story-box" id="storyBox" style="display:none">
+    <div class="event-tag" id="eventTag">Inicializace...</div>
+    <div class="story-text" id="storyText"></div>
+    <div class="loading" id="loadingEl"><span>Zpracovávám</span><span class="ld">.</span><span class="ld">.</span><span class="ld">.</span></div>
+  </div>
+
+  <div class="eod-box" id="eodBox">
+    <div class="eod-title">☽ Konec dne</div>
+    <div class="eod-text" id="eodText"></div>
+    <button class="eod-btn" onclick="nextDay()">→ Nový den</button>
+  </div>
+
+  <div class="gameover-box" id="gameoverBox">
+    <h2>☠ Konec hry</h2>
+    <p id="gameoverText"></p>
+    <button class="restart-btn" onclick="restartGame()">Zkusit znovu</button>
+  </div>
+
+  <div class="choices" id="choicesEl"></div>
+
+  <button class="diary-toggle" id="diaryToggle" onclick="toggleDiary()">▼ Deník přežití</button>
+  <div class="diary-box" id="diaryBox"></div>
+
+  <div class="footer">Jablůnka · Rok 0 · Powered by Claude</div>
+</div>
+
+<div class="input-row" id="inputRow">
+  <input type="text" class="custom-input" id="customAction" placeholder="Vlastní rozhodnutí..." autocomplete="off" autocorrect="off" spellcheck="false">
+  <button class="send-btn" id="sendBtn" onclick="sendCustom()">→</button>
+</div>
+
+<script>
+const SAVE_KEY   = 'jablunka_v3_save';
+const APIKEY_KEY = 'jablunka_apikey';
+const PHASES     = ['Ráno','Odpoledne','Večer'];
+
+const SYSTEM_PROMPT = `Si přísný, sarkastický a vulgární valašský vypravěč postapo survival hry v Beskydech. Používáš: "vole", "ježišmarja", "do piče", "fest", "búřa", "ty kokos". Brutálně upřímný — říkáš věci do ksichtu.
+
+SVĚT: Atomová válka před 3 týdny. Česko — EMP, žádná elektřina, žádný internet. Na východě radiace. Ve městech chaos. Infikovaní = lidi v terminální radiační psychóze — rychlí, zuřiví, nejsou nesmrtelní.
+
+ZÁKLADNA: Rodinný domek v Jablůnce (Beskydy), dál od silnice. Hráč + Patrik (kamarád, praktický, občas unáhlený).
+ZÁSOBY: ~30 dní jídlo, studna, 35L nafta + generátor (hlučný!), 8L benzín, Octavia TDI, Simson S51 Enduro, sekera+nůž+vzduchová pistole, lékárnička.
+
+SYSTÉM DNE — 3 FÁZE:
+Každý den má PŘESNĚ 3 fáze: Ráno → Odpoledne → Večer.
+Fáze Ráno a Odpoledne = situace + rozhodnutí hráče (5 voleb + F vlastní).
+Fáze Večer = shrnutí dne, hodnocení rozhodnutí, žádné volby, tag [KONEC DNE] na konci.
+Příběh dne musí být konzistentní — fáze na sebe navazují.
+
+TYP EVENTŮ — DŮLEŽITÉ:
+Dny jsou 5:2 — 5x týdně všední event, 1-2x speciální.
+
+VŠEDNÍ EVENTY (5x týdně): údržba základny (oprava plotu, střechy, oken), inventura a reorganizace zásob, vaření a konzervace jídla, hlídka a průzkum bezprostředního okolí (do 500m), Patrik přijde s nápadem nebo problémem, péče o generátor nebo vozidla, sběr dřeva nebo vody.
+
+SPECIÁLNÍ EVENTY (1-2x týdně): výprava pro zásoby (Rožnov, Vsetín, okolní vesnice), cizinci u plotu nebo na silnici, infikovaný v okolí základny, nález něčeho užitečného nebo nebezpečného, zprávy z rádia, morální dilema (přeživší žádá o pomoc), hrozba od organizované skupiny.
+
+PRAVIDLA:
+- Neděl nikdy speciální event 2x za sebou
+- Čas plyne realisticky v rámci dne
+- Špatná rozhodnutí mají důsledky přes celý den i do dalších dní
+- Zásoby se reálně spotřebovávají — jídlo každý den, nafta při použití generátoru, benzín při jízdě Simsonem
+- Každý týden bez výpravy = zásoby klesají rychleji (nemohou doplnit)
+- Pamatuj si vše — inventář, vztahy, předchozí události
+
+FORMÁT každé odpovědi — VŽDY začni těmito tagy:
+[DEN: číslo]
+[FÁZE: Ráno nebo Odpoledne nebo Večer]
+[ZDRAVÍ: 0-100]
+[JÍDLO: číslo]
+[NAFTA: číslo]
+[BENZÍN: číslo]
+[PATRIK: Zdravý nebo Zraněný nebo Nemocný nebo Mrtvý]
+[MORÁLKA: Výborná nebo Dobrá nebo Stabilní nebo Špatná nebo Zlomená]
+[EVENT: max 4 slova]
+
+Pak příběh fáze (2-3 odstavce, max 180 slov).
+
+Po rozhodnutí hráče:
+HODNOCENÍ:
+✓ Dobře: [co udělal dobře]
+✗ Špatně: [co mohl udělat lépe nebo co bylo špatně]
+
+Ve fázích Ráno a Odpoledne:
+VOLBY:
+A) akce
+B) akce
+C) akce
+D) akce
+E) akce
+F) Vlastní rozhodnutí
+
+Ve fázi Večer: žádné VOLBY. Shrnutí dne + [KONEC DNE] na úplném konci.
+
+Při smrtelné chybě: [KONEC HRY] a vysvětlení. Žádné volby.`;
+
+// STATE
+let apiKey='', history=[], dayCount=0, phaseIndex=0;
+let gameOver=false, showDiary=false, typingTimer=null;
+let diary=[], currentDayPhases=[], lastStory='', lastEvent='';
+
+// ── SAVE/LOAD ──
+function save() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      history, dayCount, phaseIndex, gameOver,
+      diary, currentDayPhases, lastEvent,
+      stats: { z:g('vZ'), j:g('vJ'), n:g('vN'), b:g('vB'), p:g('vP'), m:g('vM') }
+    }));
+    setSaveInd(true);
+  } catch(e){}
+}
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s.history?.length) return false;
+    history=s.history; dayCount=s.dayCount||0; phaseIndex=s.phaseIndex||0;
+    gameOver=s.gameOver||false; diary=s.diary||[];
+    currentDayPhases=s.currentDayPhases||[]; lastEvent=s.lastEvent||'';
+    if (s.stats) { sv('vZ',s.stats.z); sv('vJ',s.stats.j); sv('vN',s.stats.n); sv('vB',s.stats.b); sv('vP',s.stats.p); sv('vM',s.stats.m); }
+    document.getElementById('dayNum').textContent = dayCount||'—';
+    updatePhaseBar(); renderDiary();
+    const lastAI = [...history].reverse().find(m=>m.role==='assistant');
+    if (lastAI) {
+      parseStats(lastAI.content);
+      const clean = stripTags(lastAI.content);
+      if (clean.includes('[KONEC DNE]')) {
+        const sum = clean.replace('[KONEC DNE]','').trim();
+        document.getElementById('storyText').textContent = sum;
+        showEOD(sum);
+      } else {
+        const sp = clean.split(/^VOLBY:/im);
+        document.getElementById('storyText').textContent = sp[0].trim();
+        prepareChoices(sp[1]||'');
+        if (!gameOver) showUI();
+      }
+      if (lastEvent) document.getElementById('eventTag').textContent = `Den ${dayCount} · ${lastEvent} [pokračování]`;
+    }
+    setSaveInd(true);
+    return true;
+  } catch(e){ return false; }
+}
+
+function clearSave(){ localStorage.removeItem(SAVE_KEY); setSaveInd(false); }
+function setSaveInd(ok){ const el=document.getElementById('saveInd'); el.textContent=ok?'● uloženo':'● bez uložení'; el.className='save-ind'+(ok?' saved':''); }
+
+// ── INIT ──
+window.addEventListener('load',()=>{
+  const k=localStorage.getItem(APIKEY_KEY);
+  if(k) document.getElementById('apiKeyInput').value=k;
+  if(k && localStorage.getItem(SAVE_KEY)){
+    apiKey=k;
+    if(loadSave()){
+      document.getElementById('setupBox').style.display='none';
+      document.getElementById('storyBox').style.display='block';
+      document.getElementById('phaseBar').style.display='flex';
+      document.getElementById('diaryToggle').classList.add('show');
+    }
+  }
+});
+
+function startGame(){
+  apiKey=document.getElementById('apiKeyInput').value.trim();
+  if(!apiKey.startsWith('sk-ant')){ alert('Zadej platný Anthropic API klíč (začíná sk-ant-)'); return; }
+  localStorage.setItem(APIKEY_KEY,apiKey);
+  document.getElementById('setupBox').style.display='none';
+  document.getElementById('storyBox').style.display='block';
+  document.getElementById('phaseBar').style.display='flex';
+  document.getElementById('diaryToggle').classList.add('show');
+  history=[]; dayCount=0; phaseIndex=0; gameOver=false;
+  diary=[]; currentDayPhases=[]; lastEvent='';
+  clearSave(); resetStats(); updatePhaseBar();
+  sendToAI('Začni hru. Den 1, fáze Ráno. Uveď hráče do světa v Jablůnce a přines všední situaci. Valašský tón, napětí.');
+}
+
+function restartGame(){
+  document.getElementById('gameoverBox').classList.remove('show');
+  document.getElementById('eodBox').classList.remove('show');
+  document.getElementById('storyBox').style.display='block';
+  history=[]; dayCount=0; phaseIndex=0; gameOver=false;
+  diary=[]; currentDayPhases=[]; lastEvent='';
+  clearSave(); resetStats(); updatePhaseBar(); renderDiary();
+  sendToAI('Nová hra. Den 1, fáze Ráno. Jiný úvod než minule.');
+}
+
+function nextDay(){
+  document.getElementById('eodBox').classList.remove('show');
+  document.getElementById('storyBox').style.display='block';
+  phaseIndex=0; currentDayPhases=[];
+  updatePhaseBar();
+  sendToAI(`Nový den. Den ${dayCount+1}, fáze Ráno. Zvol vhodný typ eventu (všední nebo speciální dle frekvence) a začni.`);
+}
+
+function resetStats(){
+  sv('vZ','100%'); sb('bZ',100,'var(--lime)'); sc('cZ','ok');
+  sv('vJ','30 dní'); sb('bJ',100,'var(--lime)'); sc('cJ','ok');
+  sv('vN','35L'); sb('bN',100,'var(--lime)'); sc('cN','ok');
+  sv('vB','8L'); sb('bB',100,'var(--amber)'); sc('cB','ok');
+  sv('vP','Zdravý'); sc('cP','ok');
+  sv('vM','Stabilní'); sc('cM','ok');
+  document.getElementById('dayNum').textContent='—';
+  document.getElementById('eventTag').textContent='Inicializace...';
+  setSaveInd(false);
+}
+
+// ── PHASE BAR ──
+function updatePhaseBar(){
+  for(let i=0;i<3;i++){
+    const d=document.getElementById('pd'+i);
+    d.className='phase-dot'+(i<phaseIndex?' done':i===phaseIndex?' active':'');
+  }
+  document.getElementById('phaseName').textContent=PHASES[phaseIndex]||'Noc';
+}
+
+// ── API ──
+async function sendToAI(userMsg){
+  if(gameOver) return;
+  setLoading(true); hideUI();
+  document.getElementById('eodBox').classList.remove('show');
+  history.push({role:'user',content:userMsg});
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:SYSTEM_PROMPT,messages:history})
+    });
+    const data=await res.json();
+    if(data.error){ showError('API chyba: '+data.error.message); return; }
+    const aiText=data.content[0].text;
+    history.push({role:'assistant',content:aiText});
+    parseStats(aiText);
+    setLoading(false);
+    const clean=stripTags(aiText);
+
+    // GAME OVER
+    if(aiText.includes('[KONEC HRY]')){
+      gameOver=true;
+      const sp=clean.split('[KONEC HRY]');
+      const story=(sp[0]||clean).replace(/VOLBY:[\s\S]*/i,'').trim();
+      // save final phase
+      saveCurrPhase(story,'');
+      save();
+      displayStory(story,()=>{
+        document.getElementById('storyBox').style.display='none';
+        document.getElementById('gameoverBox').classList.add('show');
+        document.getElementById('gameoverText').textContent=sp[1]?sp[1].trim():'Jedno rozhodnutí příliš. Jablůnka tě pohltila.';
+      });
+      return;
+    }
+
+    // END OF DAY
+    if(clean.includes('[KONEC DNE]')){
+      const sum=clean.replace('[KONEC DNE]','').replace(/VOLBY:[\s\S]*/i,'').trim();
+      lastStory=sum;
+      phaseIndex=2; updatePhaseBar();
+      // save evening phase
+      saveCurrPhase(sum,'');
+      // commit day to diary
+      diary.unshift({day:dayCount, event:lastEvent, phases:[...currentDayPhases]});
+      renderDiary();
+      displayStory(sum,()=>{ showEOD(sum); save(); });
+      return;
+    }
+
+    // NORMAL PHASE
+    const faze=extractTag(aiText,'FÁZE');
+    if(faze){ const idx=PHASES.indexOf(faze); if(idx>=0){ phaseIndex=idx; updatePhaseBar(); } }
+
+    const sp=clean.split(/^VOLBY:/im);
+    const storyPart=sp[0].trim();
+    const volbyPart=sp[1]||'';
+    lastStory=storyPart;
+
+    // Save this phase story (decision filled in later)
+    saveCurrPhase(storyPart, null);
+
+    prepareChoices(volbyPart);
+    displayStory(storyPart,()=>{ showUI(); save(); });
+
+  } catch(err){ showError('Chyba: '+err.message); }
+}
+
+// ── DIARY HELPERS ──
+function saveCurrPhase(story, decision){
+  const name=PHASES[phaseIndex]||'Večer';
+  const existing=currentDayPhases.find(p=>p.name===name);
+  if(existing){
+    if(story!==null) existing.story=story;
+    if(decision!==null) existing.decision=decision;
+  } else {
+    currentDayPhases.push({name, story:story||'', decision:decision||''});
+  }
+}
+
+function recordDecision(dec){
+  const name=PHASES[phaseIndex]||'Večer';
+  const existing=currentDayPhases.find(p=>p.name===name);
+  if(existing) existing.decision=dec;
+  else currentDayPhases.push({name, story:lastStory, decision:dec});
+}
+
+function renderDiary(){
+  const box=document.getElementById('diaryBox');
+  if(!diary.length){ box.innerHTML='<div class="diary-empty">Deník je prázdný — přežij první den.</div>'; return; }
+  box.innerHTML='';
+  diary.forEach(d=>{
+    const el=document.createElement('div');
+    el.className='diary-day';
+    el.innerHTML=`
+      <div class="diary-day-header" onclick="this.parentElement.classList.toggle('expanded')">
+        <div>
+          <div class="diary-day-title">Den ${d.day} — ${d.event||'?'}</div>
+          <div class="diary-day-meta">${d.phases.length} fáze · klikni pro detail</div>
+        </div>
+        <span class="diary-day-arrow">▼</span>
+      </div>
+      <div class="diary-day-content">
+        ${d.phases.map(p=>`
+          <div class="diary-phase">
+            <div class="diary-phase-label">${p.name}</div>
+            <div class="diary-phase-story">${p.story||''}</div>
+            ${p.decision?`<div class="diary-decision">${p.decision}</div>`:''}
+          </div>
+        `).join('')}
+      </div>`;
+    box.appendChild(el);
+  });
+}
+
+function toggleDiary(){
+  showDiary=!showDiary;
+  document.getElementById('diaryBox').classList.toggle('show',showDiary);
+  document.getElementById('diaryToggle').textContent=showDiary?'▲ Deník přežití':'▼ Deník přežití';
+}
+
+function showEOD(text){ document.getElementById('eodText').textContent=text; document.getElementById('eodBox').classList.add('show'); }
+
+// ── STATS ──
+function parseStats(text){
+  const gt=tag=>{ const m=text.match(new RegExp(`\\[${tag}:\\s*([^\\]]+)\\]`,'i')); return m?m[1].trim():null; };
+  const den=gt('DEN'); if(den){ dayCount=parseInt(den); document.getElementById('dayNum').textContent=den; }
+  const ev=gt('EVENT'); if(ev){ lastEvent=ev; document.getElementById('eventTag').textContent=`Den ${dayCount||'?'} · ${ev}`; }
+  const hp=gt('ZDRAVÍ'); if(hp){ const v=clamp(parseInt(hp),0,100); sv('vZ',v+'%'); sb('bZ',v,v>60?'var(--lime)':v>30?'var(--amber)':'var(--red)'); sc('cZ',v>60?'ok':v>30?'warn':'danger'); }
+  const ji=gt('JÍDLO'); if(ji){ const d=parseFloat(ji); sv('vJ',d+' dní'); if(!isNaN(d)){ sb('bJ',clamp((d/30)*100,0,100),d>10?'var(--lime)':d>5?'var(--amber)':'var(--red)'); sc('cJ',d>10?'ok':d>5?'warn':'danger'); } }
+  const na=gt('NAFTA'); if(na){ const l=parseFloat(na); sv('vN',l+'L'); if(!isNaN(l)){ sb('bN',clamp((l/35)*100,0,100),l>10?'var(--lime)':l>5?'var(--amber)':'var(--red)'); sc('cN',l>10?'ok':l>5?'warn':'danger'); } }
+  const be=gt('BENZÍN'); if(be){ const b=parseFloat(be); sv('vB',b+'L'); if(!isNaN(b)){ sb('bB',clamp((b/8)*100,0,100),'var(--amber)'); sc('cB',b<1?'danger':b<3?'warn':'ok'); } }
+  const pa=gt('PATRIK'); if(pa){ sv('vP',pa); sc('cP',pa==='Zdravý'?'ok':pa==='Mrtvý'?'danger':'warn'); }
+  const mo=gt('MORÁLKA'); if(mo){ sv('vM',mo); sc('cM',['Výborná','Dobrá','Stabilní'].includes(mo)?'ok':mo==='Špatná'?'warn':'danger'); }
+}
+
+function extractTag(text,tag){ const m=text.match(new RegExp(`\\[${tag}:\\s*([^\\]]+)\\]`,'i')); return m?m[1].trim():null; }
+function stripTags(t){ return t.replace(/\[(DEN|FÁZE|ZDRAVÍ|JÍDLO|NAFTA|BENZÍN|PATRIK|MORÁLKA|EVENT):[^\]]+\]\s*/gi,'').trim(); }
+
+// ── DISPLAY ──
+function displayStory(text,onDone){
+  const el=document.getElementById('storyText');
+  el.textContent='';
+  if(typingTimer) clearTimeout(typingTimer);
+  const chars=text.split(''); let i=0;
+  const delay=chars.length>600?7:13;
+  function type(){ if(i<chars.length){ el.textContent+=chars[i++]; typingTimer=setTimeout(type,delay); } else if(onDone) onDone(); }
+  type();
+}
+
+function prepareChoices(volbyText){
+  const el=document.getElementById('choicesEl'); el.innerHTML='';
+  volbyText.split('\n').map(l=>l.trim()).filter(Boolean).forEach(line=>{
+    const m=line.match(/^([A-F])\)\s*(.+)/); if(!m) return;
+    const[,key,label]=m;
+    const btn=document.createElement('button');
+    btn.className='choice-btn';
+    btn.innerHTML=`<span class="choice-key">${key})</span>${label}`;
+    if(key==='F') btn.onclick=()=>document.getElementById('customAction').focus();
+    else btn.onclick=()=>{ recordDecision(label); sendToAI(label); };
+    el.appendChild(btn);
+  });
+}
+
+function sendCustom(){
+  const v=document.getElementById('customAction').value.trim();
+  if(!v||gameOver) return;
+  document.getElementById('customAction').value='';
+  document.getElementById('customAction').blur();
+  recordDecision(v); sendToAI(v);
+}
+
+function showUI(){ document.getElementById('choicesEl').classList.add('show'); document.getElementById('inputRow').classList.add('show'); document.querySelectorAll('.choice-btn').forEach(b=>b.disabled=false); }
+function hideUI(){ document.getElementById('choicesEl').classList.remove('show'); document.querySelectorAll('.choice-btn').forEach(b=>b.disabled=true); }
+function setLoading(show){ document.getElementById('loadingEl').classList.toggle('show',show); document.getElementById('sendBtn').disabled=show; }
+function showError(msg){ document.getElementById('storyText').textContent='⚠ '+msg; setLoading(false); document.getElementById('inputRow').classList.add('show'); document.getElementById('sendBtn').disabled=false; }
+
+// ── HELPERS ──
+function sv(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+function g(id){ const el=document.getElementById(id); return el?el.textContent:''; }
+function sb(id,pct,color){ const el=document.getElementById(id); if(!el) return; el.style.width=clamp(pct,0,100)+'%'; if(color) el.style.background=color; }
+function sc(id,cls){ const el=document.getElementById(id); if(el) el.className='stat-card '+cls; }
+function clamp(v,mn,mx){ return Math.min(mx,Math.max(mn,v)); }
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('customAction').addEventListener('keypress',e=>{ if(e.key==='Enter') sendCustom(); });
+  document.getElementById('apiKeyInput').addEventListener('keypress',e=>{ if(e.key==='Enter') startGame(); });
+});
+</script>
+</body>
+</html>
